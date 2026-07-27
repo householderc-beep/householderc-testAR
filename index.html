@@ -1,10 +1,14 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Debug console - lets you see errors on the iPad itself -->
     <script src="//cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
+
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
       #startButton {
         position: fixed;
@@ -28,6 +32,7 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
           color="blue"
@@ -41,9 +46,29 @@
     </a-scene>
 
     <script>
+      const sceneEl = document.querySelector('a-scene');
+
+      sceneEl.addEventListener('loaded', () => {
+        console.log('Scene loaded event fired');
+        console.log('Systems available:', Object.keys(sceneEl.systems));
+      });
+
+      sceneEl.addEventListener('arError', (event) => {
+        console.error('MindAR arError event:', event);
+      });
+
       document.querySelector('#startButton').addEventListener('click', () => {
-        const sceneEl = document.querySelector('a-scene');
-        sceneEl.systems['mindar-image-system'].start();
+        console.log('Button clicked');
+        console.log('Systems at click time:', Object.keys(sceneEl.systems));
+
+        const mindarSystem = sceneEl.systems['mindar-image-system'];
+        if (!mindarSystem) {
+          console.error('mindar-image-system not found. Available systems:', Object.keys(sceneEl.systems));
+          return;
+        }
+
+        mindarSystem.start();
+        console.log('start() called successfully');
         document.querySelector('#startButton').style.display = 'none';
       });
     </script>
