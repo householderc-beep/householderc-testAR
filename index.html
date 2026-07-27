@@ -45,6 +45,7 @@
           height="1.5"
           rotation="0 0 0"
           transparent="true"
+          scale="0.6 0.6 0.6"
         ></a-plane>
       </a-entity>
     </a-scene>
@@ -67,4 +68,14 @@
 
         const mindarSystem = sceneEl.systems['mindar-image-system'];
         if (!mindarSystem) {
-          console.error('mindar-image-system not found. Available systems:',
+          console.error('mindar-image-system not found. Available systems:', Object.keys(sceneEl.systems));
+          return;
+        }
+
+        mindarSystem.start();
+        console.log('start() called successfully');
+        document.querySelector('#startButton').style.display = 'none';
+      });
+    </script>
+  </body>
+</html>
