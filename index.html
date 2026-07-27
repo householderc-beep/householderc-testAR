@@ -32,7 +32,7 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <img id="card" src="./winghoul.png" crossorigin="anonymous" />
+        <img id="card" src="./Winghoul.png" crossorigin="anonymous" />
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -40,9 +40,9 @@
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
           src="#card"
-          position="0 0 0"
-          height="0.552"
+          position="0 0 0.05"
           width="1"
+          height="1.5"
           rotation="0 0 0"
           transparent="true"
         ></a-plane>
@@ -67,14 +67,4 @@
 
         const mindarSystem = sceneEl.systems['mindar-image-system'];
         if (!mindarSystem) {
-          console.error('mindar-image-system not found. Available systems:', Object.keys(sceneEl.systems));
-          return;
-        }
-
-        mindarSystem.start();
-        console.log('start() called successfully');
-        document.querySelector('#startButton').style.display = 'none';
-      });
-    </script>
-  </body>
-</html>
+          console.error('mindar-image-system not found. Available systems:',
