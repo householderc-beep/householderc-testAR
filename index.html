@@ -1,81 +1,71 @@
+<!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #startButton {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 999;
+      padding: 16px 32px;
+      font-size: 20px;
+      background: #222;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
 
-    <!-- Debug console - lets you see errors on the iPad itself -->
-    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
+  <button id="startButton">Start AR</button>
 
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+  >
+    <a-assets>
+      <img id="overlay" src="./lamiel1TransF.png" />
+    </a-assets>
 
-    <style>
-      #startButton {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 999;
-        padding: 20px 40px;
-        font-size: 20px;
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane
+        src="#overlay"
+        width="1"
+        height="0.935"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="1 1 1"
+        material="transparent: true; alphaTest: 0.1;"
+      ></a-plane>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const sceneEl = document.querySelector('a-scene');
+
+    document.querySelector('#startButton').addEventListener('click', () => {
+      const mindarSystem = sceneEl.systems['mindar-image-system'];
+      if (!mindarSystem) {
+        console.error('mindar-image-system not found. Available systems:', Object.keys(sceneEl.systems));
+        return;
       }
-    </style>
-  </head>
-  <body>
-    <button id="startButton">Start AR</button>
+      mindarSystem.start();
+      document.querySelector('#startButton').style.display = 'none';
+    });
+  </script>
 
-    <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
-      color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
-    >
-      <a-assets>
-        <img id="card" src="./winghoul.png" />
-      </a-assets>
-
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane
-          src="#card"
-          position="0 0 0.05"
-          width="1"
-          height="1.5"
-          rotation="0 0 0"
-          transparent="true"
-          scale="0.15 0.15 0.15"
-        ></a-plane>
-      </a-entity>
-    </a-scene>
-
-    <script>
-      const sceneEl = document.querySelector('a-scene');
-
-      sceneEl.addEventListener('loaded', () => {
-        console.log('Scene loaded event fired');
-        console.log('Systems available:', Object.keys(sceneEl.systems));
-      });
-
-      sceneEl.addEventListener('arError', (event) => {
-        console.error('MindAR arError event:', event);
-      });
-
-      document.querySelector('#startButton').addEventListener('click', () => {
-        console.log('Button clicked');
-        console.log('Systems at click time:', Object.keys(sceneEl.systems));
-
-        const mindarSystem = sceneEl.systems['mindar-image-system'];
-        if (!mindarSystem) {
-          console.error('mindar-image-system not found. Available systems:', Object.keys(sceneEl.systems));
-          return;
-        }
-
-        mindarSystem.start();
-        console.log('start() called successfully');
-        document.querySelector('#startButton').style.display = 'none';
-      });
-    </script>
-  </body>
+</body>
 </html>
