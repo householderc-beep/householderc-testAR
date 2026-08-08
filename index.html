@@ -50,27 +50,14 @@
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
-      <!-- DEBUG: solid color plane to confirm detection + rendering work -->
-      <a-plane
-        color="red"
-        opacity="0.8"
-        width="1"
-        height="0.935"
-        position="0 0 0"
-        rotation="0 0 0"
-      ></a-plane>
-
-      <!-- Real overlay - re-enable once the red plane confirms detection works -->
-      <!--
+      <!-- Real overlay, alphaTest removed for this test - opaque is fine for now -->
       <a-plane
         src="#overlay"
         width="1"
         height="0.935"
         position="0 0 0"
         rotation="0 0 0"
-        material="transparent: true; alphaTest: 0.1;"
       ></a-plane>
-      -->
     </a-entity>
   </a-scene>
 
