@@ -36,7 +36,7 @@
 </head>
 <body>
 
-  <button id="startButton">Revela Occulta</button>
+  <button id="startButton">Revela Occulta v1</button>
 
   <a-scene
     mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.00001; filterBeta: 0.01;"
@@ -57,6 +57,7 @@
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
+      <a-text value="Index: 0" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <!-- Real overlay, alphaTest removed for this test - opaque is fine for now -->
       <a-plane
         src="#overlay"
@@ -70,6 +71,7 @@
     </a-entity>
 
     <a-entity mindar-image-target="targetIndex: 1">
+      <a-text value="Index: 1" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <a-plane
         src="#overlay2"
         width="1"
@@ -82,6 +84,7 @@
     </a-entity>
 	
     <a-entity mindar-image-target="targetIndex: 2">
+      <a-text value="Index: 2" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <a-plane
         src="#overlay3"
         width="1"
@@ -94,6 +97,7 @@
     </a-entity>
 
     <a-entity mindar-image-target="targetIndex: 3">
+      <a-text value="Index: 3" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <a-plane
         src="#overlay4"
         width="1"
@@ -106,6 +110,7 @@
     </a-entity>
 
     <a-entity mindar-image-target="targetIndex: 4">
+      <a-text value="Index: 4" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <a-plane
         src="#overlay5"
         width="1"
@@ -118,6 +123,7 @@
     </a-entity>
 
     <a-entity mindar-image-target="targetIndex: 5">
+      <a-text value="Index: 5" color="#00FF00" width="4" position="0 0.6 0" align="center"></a-text>
       <a-plane
         src="#overlay6"
         width="1"
