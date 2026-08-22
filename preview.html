@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #2b2b2b; }
+    #info { position: fixed; top: 10px; left: 10px; z-index: 999; color: #fff;
+      font-family: sans-serif; font-size: 14px; background: rgba(0,0,0,0.65);
+      padding: 10px 14px; border-radius: 8px; line-height: 1.5; max-width: 360px; }
+  </style>
+</head>
+<body>
+  <div id="info"><b>Preview: 03_LamFP.png </b><br>No camera used &mdash; this shows the overlay's position/rotation/scale relative to the trigger image, the same way MindAR places it once it locks on.<br><br>Drag to look around &middot; W/A/S/D to move &middot; click Preview again (or just refresh this tab) after changing values<br><br>overlay: LamFPO.png &middot; pos 0 0 0 &middot; rot 0 0 0 &middot; scale 0.5 0.5 0.5 &middot; w/h 1/1.1</div>
+  <a-scene background="color: #2b2b2b">
+    <a-assets>
+      <img id="triggerImg" src="./targets/03_LamFP.png " />
+      <img id="overlayImg" src="./overlays/LamFPO.png" />
+    </a-assets>
+
+    <a-entity light="type: ambient; intensity: 0.9"></a-entity>
+    <a-entity light="type: directional; intensity: 0.4" position="0 1 2"></a-entity>
+
+    <!-- The trigger image, sitting where MindAR's target plane would be.
+         Nudged a hair behind the overlay so the two don't flicker (z-fight)
+         when the overlay sits at the same position="0 0 0" as the marker.
+         Real MindAR scenes never render this plane at all, so it never happens there.
+         side: double rules out a back-face-culling surprise. -->
+    <a-plane src="#triggerImg" width="1" height="0.563" position="0 0 -0.001" material="side: double"></a-plane>
+
+    <!-- The overlay - same attributes that get written into index.html, plus side: double. -->
+    <a-plane
+      src="#overlayImg"
+      width="1"
+      height="1.1"
+      position="0 0 0"
+      rotation="0 0 0"
+      scale="0.5 0.5 0.5"
+      material="transparent: true; alphaTest: 0.1; side: double"
+    ></a-plane>
+
+    <a-camera position="0 0 1.1" camera="fov: 50" wasd-controls="acceleration: 10" look-controls></a-camera>
+  </a-scene>
+
+  <!-- Self-diagnosing: if either image actually fails to load (bad filename,
+       wrong extension case, etc.) this puts a visible red banner on the page
+       instead of just leaving you with an invisible plane and no clue why. -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      [
+        { id: 'triggerImg', label: 'trigger image' },
+        { id: 'overlayImg', label: 'overlay image' }
+      ].forEach(function (c) {
+        var img = document.getElementById(c.id);
+        function report(ok) {
+          if (ok) { console.log('[preview] loaded', c.label, img.src); return; }
+          console.error('[preview] FAILED to load', c.label, img.src);
+          var b = document.createElement('div');
+          b.style.cssText = 'position:fixed;left:10px;z-index:999;background:#a33;color:#fff;font-family:sans-serif;font-size:13px;padding:8px 12px;border-radius:6px;max-width:400px;';
+          b.style.top = (document.querySelectorAll('.preview-error').length * 46 + 200) + 'px';
+          b.className = 'preview-error';
+          b.textContent = 'Failed to load ' + c.label + ': ' + img.getAttribute('src');
+          document.body.appendChild(b);
+        }
+        if (img.complete) { report(img.naturalWidth > 0); }
+        else {
+          img.addEventListener('load', function () { report(img.naturalWidth > 0); });
+          img.addEventListener('error', function () { report(false); });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

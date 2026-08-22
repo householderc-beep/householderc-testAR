@@ -77,6 +77,54 @@ Closing the small edit window without saving just returns you to the list
 with nothing changed — only closing the Manage Targets window itself
 cancels the whole run.
 
+## Previewing placement without a camera
+
+Every Edit/Configure window now has a **Preview (no camera)** button next
+to Save. Click it any time — even before you've saved — and it opens
+`preview.html` in your browser: a plain 3D scene (no MindAR, no camera
+permission) showing the trigger image as a flat panel with the overlay
+sitting on it using whatever position/rotation/scale/width/height values
+are currently in the form. Drag to look around, WASD to move closer or
+farther away.
+
+This works because the overlay's placement relative to the marker never
+actually depends on the camera — MindAR only decides where to put the
+*virtual camera*, not where the overlay sits on the target. So this preview
+is a faithful stand-in for tuning position/scale/rotation, just not for
+tracking quality (how fast/reliably MindAR locks onto that image), which
+still needs a real test on the phone.
+
+Change a value, click Preview again (or just refresh the browser tab) to
+see the update — nothing needs to be saved first. `preview.html` gets
+overwritten each time you click Preview, so don't rename or keep copies of
+it; it's a scratch file, not something to check in.
+
+**Why it opens `http://localhost:8791/...` instead of just double-clicking
+the file:** Chrome (and most browsers) will display a local image just
+fine, but refuses to let WebGL use a `file://` image as a texture at all —
+you'd see a flat, untextured gray box instead of the actual picture, even
+though the image "loaded" correctly. A real server makes everything
+same-origin and that restriction goes away, so clicking Preview now starts
+a tiny local static file server for you automatically (serving your project
+folder) instead of asking you to remember to run one by hand. It shows up
+as a minimized window titled **"MindAR Preview Server (closing this window
+stops it)"** — leave it running for as long as you're tuning placement,
+close it whenever you're done. If you click Preview again later and it's
+already running, it's reused rather than starting a second one.
+
+If it ever fails to start (e.g. something already using that port, or a
+locked-down PowerShell execution policy), you'll get a message with a
+manual fallback: run `python -m http.server 8791` in the project folder
+yourself, then click Preview again.
+
+The preview page also checks its own two images as soon as it loads. If
+either one genuinely fails to load (wrong filename, moved file, etc.) a red
+banner appears on the page telling you which one and what path it tried —
+so a blank/missing overlay always explains itself instead of just being an
+empty gap on screen. The info box in the top-left also prints the exact
+overlay/position/rotation/scale/width/height it's using, so you can compare
+against what's in the edit window.
+
 ## Version number auto-increment
 
 The `Revela Occulta vX.Y` text on the start button gets its minor version
@@ -104,6 +152,12 @@ step and the index.html rewrite.
   it's unaffected by renaming.
 - `backups/` — timestamped copies of `targets.mind` and `index.html` from
   before each run.
+- `preview.html` — scratch file for the camera-free placement preview,
+  overwritten every time you click Preview. Safe to ignore/delete; it's
+  regenerated whenever you need it.
+- A small PowerShell server script in your Windows temp folder (not in the
+  project folder), used to serve the preview locally. You'll never need to
+  touch it directly.
 
 ## Large trigger images
 

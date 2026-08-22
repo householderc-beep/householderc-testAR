@@ -76,6 +76,9 @@ Global Const $SETTINGS_INI   = $PROJECT_ROOT & "\target-settings.ini"
 Global Const $BACKUP_DIR     = $PROJECT_ROOT & "\backups"
 Global Const $THUMB_TMP      = @TempDir & "\mindar_thumb.png"
 Global Const $COMPILE_URL    = "https://hiukim.github.io/mind-ar-js-doc/tools/compile/"
+Global Const $PREVIEW_HTML   = $PROJECT_ROOT & "\preview.html"
+Global Const $PREVIEW_PORT   = 8791
+Global Const $PREVIEW_SERVER_SCRIPT = @TempDir & "\mindar_preview_server.ps1"
 
 Global Const $ASSET_EXTENSIONS = "png|jpg|jpeg"
 Global Const $PREFIX_DIGITS = 2 ; "01_", "02_", ... up to 99 targets
@@ -267,6 +270,229 @@ EndFunc
 ; (first-time configuring). Returns True if the user saved, False if they
 ; closed the window without saving - the caller decides what that means
 ; rather than this function exiting the whole script.
+; ---------------------------------------------------------------------------
+; Camera-free placement preview.
+;
+; Builds a standalone A-Frame page (no MindAR, no camera permission) that
+; shows the trigger image as a flat plane and the overlay as a child plane
+; using the EXACT SAME position/rotation/scale/width/height values that
+; would be written into index.html. The relationship between overlay and
+; target never depends on the camera - MindAR only decides where to put the
+; virtual camera, not where the overlay sits relative to the marker - so
+; this is a faithful preview of placement/scale/rotation, just not of
+; tracking quality.
+;
+; Opens straight from disk (file://). That's fine here because, unlike the
+; real index.html, this page never fetches anything itself (no targets.mind,
+; no JSON) - it only uses plain <img> tags for the two local images, which
+; load fine without a server. If your browser ever refuses to show the
+; images anyway, open this the same way you do for camera testing (a local
+; server, e.g. "python -m http.server" in the project folder, then browse
+; to http://localhost:8000/preview.html instead of double-clicking it).
+; ---------------------------------------------------------------------------
+Func _GeneratePreviewHtml($sTargetFile, $sOverlay, $sPos, $sRot, $sScale, $sOvWidth, $sOvHeight)
+	Local $fTriggerHeight = _OverlayAspectHeight($TARGETS_DIR & "\" & $sTargetFile)
+
+	Local $sHtml = ""
+	$sHtml &= "<!DOCTYPE html>" & @CRLF
+	$sHtml &= "<html>" & @CRLF
+	$sHtml &= "<head>" & @CRLF
+	$sHtml &= '  <meta charset="UTF-8">' & @CRLF
+	$sHtml &= '  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>' & @CRLF
+	$sHtml &= "  <style>" & @CRLF
+	$sHtml &= "    html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #2b2b2b; }" & @CRLF
+	$sHtml &= "    #info { position: fixed; top: 10px; left: 10px; z-index: 999; color: #fff;" & @CRLF
+	$sHtml &= "      font-family: sans-serif; font-size: 14px; background: rgba(0,0,0,0.65);" & @CRLF
+	$sHtml &= "      padding: 10px 14px; border-radius: 8px; line-height: 1.5; max-width: 360px; }" & @CRLF
+	$sHtml &= "  </style>" & @CRLF
+	$sHtml &= "</head>" & @CRLF
+	$sHtml &= "<body>" & @CRLF
+	$sHtml &= '  <div id="info"><b>Preview: ' & $sTargetFile & '</b><br>' & _
+		"No camera used &mdash; this shows the overlay's position/rotation/scale" & _
+		" relative to the trigger image, the same way MindAR places it once it locks on.<br><br>" & _
+		"Drag to look around &middot; W/A/S/D to move &middot; click Preview again (or just refresh this" & _
+		" tab) after changing values<br><br>" & _
+		"overlay: " & $sOverlay & " &middot; pos " & $sPos & " &middot; rot " & $sRot & _
+		" &middot; scale " & $sScale & " &middot; w/h " & $sOvWidth & "/" & $sOvHeight & "</div>" & @CRLF
+	$sHtml &= '  <a-scene background="color: #2b2b2b">' & @CRLF
+	$sHtml &= "    <a-assets>" & @CRLF
+	$sHtml &= '      <img id="triggerImg" src="./targets/' & $sTargetFile & '" />' & @CRLF
+	$sHtml &= '      <img id="overlayImg" src="./overlays/' & $sOverlay & '" />' & @CRLF
+	$sHtml &= "    </a-assets>" & @CRLF
+	$sHtml &= @CRLF
+	$sHtml &= '    <a-entity light="type: ambient; intensity: 0.9"></a-entity>' & @CRLF
+	$sHtml &= '    <a-entity light="type: directional; intensity: 0.4" position="0 1 2"></a-entity>' & @CRLF
+	$sHtml &= @CRLF
+	$sHtml &= "    <!-- The trigger image, sitting where MindAR's target plane would be." & @CRLF
+	$sHtml &= "         Nudged a hair behind the overlay so the two don't flicker (z-fight)" & @CRLF
+	$sHtml &= '         when the overlay sits at the same position="0 0 0" as the marker.' & @CRLF
+	$sHtml &= "         Real MindAR scenes never render this plane at all, so it never happens there." & @CRLF
+	$sHtml &= "         side: double rules out a back-face-culling surprise. -->" & @CRLF
+	$sHtml &= '    <a-plane src="#triggerImg" width="1" height="' & $fTriggerHeight & '" position="0 0 -0.001" material="side: double"></a-plane>' & @CRLF
+	$sHtml &= @CRLF
+	$sHtml &= "    <!-- The overlay - same attributes that get written into index.html, plus side: double. -->" & @CRLF
+	$sHtml &= "    <a-plane" & @CRLF
+	$sHtml &= '      src="#overlayImg"' & @CRLF
+	$sHtml &= '      width="' & $sOvWidth & '"' & @CRLF
+	$sHtml &= '      height="' & $sOvHeight & '"' & @CRLF
+	$sHtml &= '      position="' & $sPos & '"' & @CRLF
+	$sHtml &= '      rotation="' & $sRot & '"' & @CRLF
+	$sHtml &= '      scale="' & $sScale & '"' & @CRLF
+	$sHtml &= '      material="transparent: true; alphaTest: 0.1; side: double"' & @CRLF
+	$sHtml &= "    ></a-plane>" & @CRLF
+	$sHtml &= @CRLF
+	$sHtml &= '    <a-camera position="0 0 1.1" camera="fov: 50" wasd-controls="acceleration: 10" look-controls></a-camera>' & @CRLF
+	$sHtml &= "  </a-scene>" & @CRLF
+	$sHtml &= @CRLF
+	$sHtml &= "  <!-- Self-diagnosing: if either image actually fails to load (bad filename," & @CRLF
+	$sHtml &= "       wrong extension case, etc.) this puts a visible red banner on the page" & @CRLF
+	$sHtml &= "       instead of just leaving you with an invisible plane and no clue why. -->" & @CRLF
+	$sHtml &= "  <script>" & @CRLF
+	$sHtml &= "    window.addEventListener('DOMContentLoaded', function () {" & @CRLF
+	$sHtml &= "      [" & @CRLF
+	$sHtml &= "        { id: 'triggerImg', label: 'trigger image' }," & @CRLF
+	$sHtml &= "        { id: 'overlayImg', label: 'overlay image' }" & @CRLF
+	$sHtml &= "      ].forEach(function (c) {" & @CRLF
+	$sHtml &= "        var img = document.getElementById(c.id);" & @CRLF
+	$sHtml &= "        function report(ok) {" & @CRLF
+	$sHtml &= "          if (ok) { console.log('[preview] loaded', c.label, img.src); return; }" & @CRLF
+	$sHtml &= "          console.error('[preview] FAILED to load', c.label, img.src);" & @CRLF
+	$sHtml &= "          var b = document.createElement('div');" & @CRLF
+	$sHtml &= "          b.style.cssText = 'position:fixed;left:10px;z-index:999;background:#a33;color:#fff;" & _
+		"font-family:sans-serif;font-size:13px;padding:8px 12px;border-radius:6px;max-width:400px;';" & @CRLF
+	$sHtml &= "          b.style.top = (document.querySelectorAll('.preview-error').length * 46 + 200) + 'px';" & @CRLF
+	$sHtml &= "          b.className = 'preview-error';" & @CRLF
+	$sHtml &= "          b.textContent = 'Failed to load ' + c.label + ': ' + img.getAttribute('src');" & @CRLF
+	$sHtml &= "          document.body.appendChild(b);" & @CRLF
+	$sHtml &= "        }" & @CRLF
+	$sHtml &= "        if (img.complete) { report(img.naturalWidth > 0); }" & @CRLF
+	$sHtml &= "        else {" & @CRLF
+	$sHtml &= "          img.addEventListener('load', function () { report(img.naturalWidth > 0); });" & @CRLF
+	$sHtml &= "          img.addEventListener('error', function () { report(false); });" & @CRLF
+	$sHtml &= "        }" & @CRLF
+	$sHtml &= "      });" & @CRLF
+	$sHtml &= "    });" & @CRLF
+	$sHtml &= "  </script>" & @CRLF
+	$sHtml &= "</body>" & @CRLF
+	$sHtml &= "</html>" & @CRLF
+
+	Local $hFile = FileOpen($PREVIEW_HTML, 2) ; overwrite
+	If $hFile = -1 Then
+		MsgBox(16, "TargetManager", "Couldn't write preview file:" & @CRLF & $PREVIEW_HTML)
+		Return
+	EndIf
+	FileWrite($hFile, $sHtml)
+	FileClose($hFile)
+EndFunc
+
+Func _OpenInBrowser($sPath)
+	Run(@ComSpec & ' /c start "" "' & $sPath & '"', "", @SW_HIDE)
+EndFunc
+
+; ---------------------------------------------------------------------------
+; Local preview server.
+;
+; Chrome (and most browsers) will happily load a plain <img> from a file://
+; page, but refuses to hand that image to WebGL as a texture at all - it's
+; treated as tainted/cross-origin regardless of whether the image itself
+; loaded fine. That's why the trigger/overlay images in preview.html showed
+; up as flat, untextured gray boxes instead of the actual pictures: the
+; <img> tags loaded successfully, but WebGL silently refused to use them.
+; A real server (even a local one) makes everything same-origin and the
+; restriction goes away - so this spins up a tiny static file server for
+; the project folder rather than asking you to keep one running by hand.
+;
+; It's started once and left running in a minimized "MindAR Preview Server"
+; window - closing that window stops it. If it's already running (e.g. from
+; an earlier Preview click, or an earlier run of this script), this just
+; reuses it instead of starting a second one.
+; ---------------------------------------------------------------------------
+Func _EnsurePreviewServerRunning()
+	TCPStartup()
+
+	Local $iSocket = TCPConnect("127.0.0.1", $PREVIEW_PORT)
+	If $iSocket <> -1 Then
+		TCPCloseSocket($iSocket)
+		TCPShutdown()
+		Return True ; already running - reuse it
+	EndIf
+
+	_WritePreviewServerScript()
+
+	Run(@ComSpec & ' /c start "MindAR Preview Server (closing this window stops it)" /min powershell' & _
+		' -NoProfile -ExecutionPolicy Bypass -File "' & $PREVIEW_SERVER_SCRIPT & '"', "", @SW_HIDE)
+
+	; Give it a moment to come up, then confirm it's actually listening.
+	Local $bUp = False
+	Local $iTries = 0
+	While $iTries < 20 ; up to ~4 seconds
+		Sleep(200)
+		$iSocket = TCPConnect("127.0.0.1", $PREVIEW_PORT)
+		If $iSocket <> -1 Then
+			TCPCloseSocket($iSocket)
+			$bUp = True
+			ExitLoop
+		EndIf
+		$iTries += 1
+	WEnd
+
+	TCPShutdown()
+
+	If Not $bUp Then
+		MsgBox(48, "TargetManager", "Couldn't start the local preview server on port " & $PREVIEW_PORT & "." & @CRLF & @CRLF & _
+			"You can start one yourself instead: open a command prompt in" & @CRLF & $PROJECT_ROOT & @CRLF & _
+			"and run:" & @CRLF & "    python -m http.server " & $PREVIEW_PORT & @CRLF & @CRLF & _
+			"then click Preview again.")
+	EndIf
+
+	Return $bUp
+EndFunc
+
+; Writes the tiny static-file-server PowerShell script that
+; _EnsurePreviewServerRunning launches. Re-reads files from disk on every
+; request (no caching), so refreshing the browser after clicking Preview
+; again always shows the latest preview.html.
+Func _WritePreviewServerScript()
+	Local $sPs = ""
+	$sPs &= '$port = ' & $PREVIEW_PORT & @CRLF
+	$sPs &= '$root = "' & $PROJECT_ROOT & '"' & @CRLF
+	$sPs &= '$listener = New-Object System.Net.HttpListener' & @CRLF
+	$sPs &= '$listener.Prefixes.Add("http://localhost:$port/")' & @CRLF
+	$sPs &= '$listener.Start()' & @CRLF
+	$sPs &= 'Write-Host "MindAR preview server running on http://localhost:$port/  (close this window to stop it)"' & @CRLF
+	$sPs &= '$mime = @{ ".html"="text/html"; ".htm"="text/html"; ".png"="image/png"; ".jpg"="image/jpeg";' & _
+		' ".jpeg"="image/jpeg"; ".js"="application/javascript"; ".css"="text/css"; ".mind"="application/octet-stream" }' & @CRLF
+	$sPs &= 'while ($listener.IsListening) {' & @CRLF
+	$sPs &= '  try {' & @CRLF
+	$sPs &= '    $context = $listener.GetContext()' & @CRLF
+	$sPs &= '    $request = $context.Request' & @CRLF
+	$sPs &= '    $response = $context.Response' & @CRLF
+	$sPs &= '    $localPath = $request.Url.LocalPath.TrimStart("/")' & @CRLF
+	$sPs &= '    if ([string]::IsNullOrEmpty($localPath)) { $localPath = "preview.html" }' & @CRLF
+	$sPs &= '    $filePath = Join-Path $root $localPath' & @CRLF
+	$sPs &= '    if (Test-Path $filePath -PathType Leaf) {' & @CRLF
+	$sPs &= '      $ext = [System.IO.Path]::GetExtension($filePath).ToLower()' & @CRLF
+	$sPs &= '      $contentType = if ($mime.ContainsKey($ext)) { $mime[$ext] } else { "application/octet-stream" }' & @CRLF
+	$sPs &= '      $bytes = [System.IO.File]::ReadAllBytes($filePath)' & @CRLF
+	$sPs &= '      $response.ContentType = $contentType' & @CRLF
+	$sPs &= '      $response.ContentLength64 = $bytes.Length' & @CRLF
+	$sPs &= '      $response.OutputStream.Write($bytes, 0, $bytes.Length)' & @CRLF
+	$sPs &= '    } else {' & @CRLF
+	$sPs &= '      $response.StatusCode = 404' & @CRLF
+	$sPs &= '      $buf = [System.Text.Encoding]::UTF8.GetBytes("Not found: $localPath")' & @CRLF
+	$sPs &= '      $response.OutputStream.Write($buf, 0, $buf.Length)' & @CRLF
+	$sPs &= '    }' & @CRLF
+	$sPs &= '    $response.OutputStream.Close()' & @CRLF
+	$sPs &= '  } catch {' & @CRLF
+	$sPs &= '    Write-Host "Preview server error: $_"' & @CRLF
+	$sPs &= '  }' & @CRLF
+	$sPs &= '}' & @CRLF
+
+	Local $hFile = FileOpen($PREVIEW_SERVER_SCRIPT, 2) ; overwrite
+	FileWrite($hFile, $sPs)
+	FileClose($hFile)
+EndFunc
+
 Func _ShowConfigGUI($sCurrentFile, $aOverlays)
 	Local $sBaseFile = _StripPrefix($sCurrentFile)
 	Local $sImgPath = $TARGETS_DIR & "\" & $sCurrentFile
@@ -281,7 +507,7 @@ Func _ShowConfigGUI($sCurrentFile, $aOverlays)
 	Local $bIsEdit = ($sExistingOverlay <> "")
 
 	Local $sTitle = $bIsEdit ? ("Edit: " & $sBaseFile) : ("Configure: " & $sBaseFile)
-	Local $hGui = GUICreate($sTitle, 420, 560)
+	Local $hGui = GUICreate($sTitle, 420, 600)
 
 	GUICtrlCreateLabel("Trigger image: " & $sBaseFile & "  (" & $sCurrentFile & ")", 15, 10, 390, 20)
 	GUICtrlCreatePic($THUMB_TMP, 15, 35, $aDim[0], $aDim[1])
@@ -325,8 +551,11 @@ Func _ShowConfigGUI($sCurrentFile, $aOverlays)
 		GUICtrlSetData($idHeight, $fH)
 	EndIf
 
+	Local $idPreview = GUICtrlCreateButton("Preview (no camera)", 70, $iRow, 130, 32)
 	Local $sSaveLabel = $bIsEdit ? "Save Changes" : "Next / Save"
-	Local $idSave = GUICtrlCreateButton($sSaveLabel, 140, $iRow, 140, 32)
+	Local $idSave = GUICtrlCreateButton($sSaveLabel, 210, $iRow, 140, 32)
+	$iRow += 40
+	GUICtrlCreateLabel("Preview opens the current values in your browser, even if unsaved.", 15, $iRow, 390, 20)
 
 	GUISetState(@SW_SHOW, $hGui)
 
@@ -346,6 +575,17 @@ Func _ShowConfigGUI($sCurrentFile, $aOverlays)
 			Case $msg = $GUI_EVENT_CLOSE
 				$bSaved = False
 				ExitLoop
+			Case $msg = $idPreview
+				Local $sOverlayNow = GUICtrlRead($idOverlayCombo)
+				If $sOverlayNow = "" Then
+					MsgBox(48, "TargetManager", "Pick an overlay first.")
+					ContinueLoop
+				EndIf
+				_GeneratePreviewHtml($sCurrentFile, $sOverlayNow, GUICtrlRead($idPos), GUICtrlRead($idRot), _
+					GUICtrlRead($idScale), GUICtrlRead($idWidth), GUICtrlRead($idHeight))
+				If _EnsurePreviewServerRunning() Then
+					_OpenInBrowser("http://localhost:" & $PREVIEW_PORT & "/preview.html")
+				EndIf
 			Case $msg = $idSave
 				Local $sOverlay = GUICtrlRead($idOverlayCombo)
 				If $sOverlay = "" Then
