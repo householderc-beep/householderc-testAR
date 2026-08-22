@@ -506,6 +506,7 @@ Func _RegenerateIndexHtml($aTargets)
 
 	$sHtml = _ReplaceBetweenMarkers($sHtml, "<!-- AUTOGEN:ASSETS:START - do not hand-edit between these markers, TargetManager.au3 rewrites this block -->", "<!-- AUTOGEN:ASSETS:END -->", $sAssets)
 	$sHtml = _ReplaceBetweenMarkers($sHtml, "<!-- AUTOGEN:TARGETS:START - do not hand-edit between these markers, TargetManager.au3 rewrites this block -->", "<!-- AUTOGEN:TARGETS:END -->", $sTargets)
+	$sHtml = _BumpVersion($sHtml)
 
 	; Back up the previous index.html alongside the .mind backups
 	Local $sBackupName = "index_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & @SEC & ".html"
@@ -514,6 +515,32 @@ Func _RegenerateIndexHtml($aTargets)
 	Local $hFile = FileOpen($INDEX_HTML, 2) ; overwrite
 	FileWrite($hFile, $sHtml)
 	FileClose($hFile)
+EndFunc
+
+; Bumps the minor version number in <button id="startButton">Revela Occulta vX.Y</button>
+; every time index.html is regenerated (v1.1 -> v1.2 -> v1.3, ...). No cap/rollover.
+; Isolates the substitution to the button's own text and avoids regex backreferences
+; in the replacement string entirely, so there's no ambiguity between a backreference
+; and a following literal digit.
+Func _BumpVersion($sHtml)
+	Local $sOpenTag = '<button id="startButton">'
+	Local $iOpenPos = StringInStr($sHtml, $sOpenTag)
+	If $iOpenPos = 0 Then Return $sHtml ; button not found, leave file alone
+
+	Local $iTextStart = $iOpenPos + StringLen($sOpenTag)
+	Local $iCloseTagPos = StringInStr($sHtml, "</button>", 0, 1, $iTextStart)
+	If $iCloseTagPos = 0 Then Return $sHtml
+
+	Local $sButtonText = StringMid($sHtml, $iTextStart, $iCloseTagPos - $iTextStart)
+
+	Local $aVer = StringRegExp($sButtonText, "v(\d+)\.(\d+)", 1)
+	If @error Then Return $sHtml ; no "vX.Y" pattern found, leave alone
+
+	Local $iMajor = Number($aVer[0])
+	Local $iMinor = Number($aVer[1]) + 1
+	Local $sNewButtonText = StringRegExpReplace($sButtonText, "v\d+\.\d+", "v" & $iMajor & "." & $iMinor)
+
+	Return StringLeft($sHtml, $iTextStart - 1) & $sNewButtonText & StringMid($sHtml, $iCloseTagPos)
 EndFunc
 
 Func _BuildAssetsBlock($aTargets)

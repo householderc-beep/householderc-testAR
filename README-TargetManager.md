@@ -77,6 +77,18 @@ Closing the small edit window without saving just returns you to the list
 with nothing changed — only closing the Manage Targets window itself
 cancels the whole run.
 
+## Version number auto-increment
+
+The `Revela Occulta vX.Y` text on the start button gets its minor version
+bumped by 1 every time the script rewrites `index.html` — v1.1 becomes v1.2,
+then v1.3, and so on. There's no cap or rollover into the major number; it
+just counts up. This happens automatically on every run that reaches the
+index.html rewrite step (including edit-only runs where you didn't add any
+new targets), so you always have a quick visual confirmation on the page
+itself that you're looking at the latest build. If you ever need to reset
+or jump the version, just hand-edit the number in `index.html` once — the
+script will keep incrementing from whatever it finds next time.
+
 ## First run note
 
 Your 6 existing images have no prefix yet, so the first run will rename
